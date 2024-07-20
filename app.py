@@ -1,8 +1,15 @@
-from flask import Flask, jsonify, send_from_directory, request
+from flask import Flask, jsonify, send_from_directory, request, send_file
 import openpyxl
 import pandas as pd
+import os
 
 app = Flask(__name__)
+
+# Directory where the .webm files are stored
+WEBM_DIRECTORY = 'downloaded_webm_files'
+
+def sanitize_filename(name):
+    return "".join([c if c.isalnum() or c in " .-_()" else "_" for c in name])
 
 def extract_links_from_excel(file_path, sheet_name, column_name):
     wb = openpyxl.load_workbook(file_path, data_only=True)
@@ -40,7 +47,6 @@ def extract_names_from_excel(file_path, sheet_name, columns):
 
 @app.route('/playlist')
 def get_playlist():
-    # file_path = r'C:\Users\Tolli\Music\AMQ\Browserplayer\AMQDB.xlsx'
     file_path = './AMQDB.xlsx'
     sheet_name = request.args.get('sheet', 'GaleHail')
     column_name = 'Song Info'  # Column containing the links
@@ -48,10 +54,23 @@ def get_playlist():
     try:
         links = extract_links_from_excel(file_path, sheet_name, column_name)
         combined_names, full_names = extract_names_from_excel(file_path, sheet_name, ['Anime Name', 'Song Type', 'Song Info'])
-        combined_playlist = list(zip(links, combined_names, full_names))
+        combined_playlist = []
+
+        for link, combined_name, full_name in zip(links, combined_names, full_names):
+            sanitized_filename = sanitize_filename(full_name) + ".webm"
+            local_file_path = os.path.join(WEBM_DIRECTORY, sanitized_filename)
+            if os.path.exists(local_file_path):
+                combined_playlist.append((f"/video/{sanitized_filename}", combined_name, full_name, True))
+            else:
+                combined_playlist.append((link, combined_name, full_name, False))
+        
         return jsonify(combined_playlist)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+
+@app.route('/video/<filename>')
+def serve_video(filename):
+    return send_from_directory(WEBM_DIRECTORY, filename)
 
 @app.route('/')
 def serve_index():

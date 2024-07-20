@@ -10,7 +10,7 @@
             display: flex;
             height: 100vh;
             margin: 0;
-            overflow: hidden; /* Prevent scrollbars from showing up */
+            overflow: hidden;
         }
         .playlist-container {
             display: flex;
@@ -18,7 +18,7 @@
             width: 100%;
         }
         .playlist {
-            width: 600px; /* Fixed width of the sidebar */
+            width: 600px;
             border-right: 1px solid #ccc;
             overflow-y: auto;
             padding: 10px;
@@ -85,8 +85,9 @@
             border-radius: 5px;
             max-width: 80%;
             text-align: center;
-            white-space: pre-wrap; /* Preserve line breaks */
+            white-space: pre-wrap;
             margin-bottom: 20px;
+            position: relative;
         }
         .sheet-buttons {
             display: flex;
@@ -104,17 +105,35 @@
         .sheet-buttons button:hover {
             background-color: #0056b3;
         }
+        .local-indicator {
+            color: green;
+            font-size: 24px;
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .checkmark {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: green;
+            color: white;
+            text-align: center;
+            line-height: 20px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <div class="playlist-container">
-        <div class="playlist" id="playlist">
-            <!-- Playlist items will be dynamically added here -->
-        </div>
+        <div class="playlist" id="playlist"></div>
         <div class="video-container">
             <div class="filter-container">
                 <input type="text" id="filterInput" placeholder="Filter by Anime, Song or Artist" oninput="filterPlaylist()">
             </div>
+            <div class="local-indicator checkmark" id="localIndicator">✔</div>
             <div class="video-overlay" id="videoOverlay">Song Name</div>
             <video id="videoPlayer" controls>
                 Your browser does not support the video tag.
@@ -138,11 +157,12 @@
         const videoPlayer = document.getElementById('videoPlayer');
         const playlistElement = document.getElementById('playlist');
         const videoOverlay = document.getElementById('videoOverlay');
+        const localIndicator = document.getElementById('localIndicator');
         const filterInput = document.getElementById('filterInput');
         let playlist = [];
         let filteredPlaylist = [];
         let currentIndex = 0;
-        let currentSheet = 'GTXD'; // Default sheet
+        let currentSheet = 'GTXD';
 
         async function loadPlaylist(sheetName) {
             const response = await fetch(`/playlist?sheet=${sheetName}`);
@@ -154,7 +174,7 @@
             }
 
             playlist = data;
-            filterPlaylist(); // Apply initial filter
+            filterPlaylist();
             if (filteredPlaylist.length > 0) {
                 loadVideo(currentIndex);
             } else {
@@ -172,11 +192,11 @@
         }
 
         function renderPlaylist() {
-            playlistElement.innerHTML = ''; // Clear existing playlist items
+            playlistElement.innerHTML = '';
             filteredPlaylist.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'playlist-item';
-                div.textContent = item[1];  // Display the truncated name
+                div.textContent = item[1];
                 div.onclick = () => loadVideo(index);
                 playlistElement.appendChild(div);
             });
@@ -190,7 +210,13 @@
             }
             if (items[currentIndex]) {
                 items[currentIndex].classList.add('active');
-                videoOverlay.textContent = filteredPlaylist[currentIndex][2];  // Show full name on overlay
+                videoOverlay.textContent = filteredPlaylist[currentIndex][2];
+                if (filteredPlaylist[currentIndex][3]) {
+                    localIndicator.style.display = 'inline-block';
+                } else {
+                    localIndicator.style.display = 'none';
+                }
+                console.log(`Video loaded locally: ${filteredPlaylist[currentIndex][3]}`);
             }
         }
 
@@ -213,11 +239,11 @@
         }
 
         function seekForward() {
-            videoPlayer.currentTime += 10;  // Seek forward 10 seconds
+            videoPlayer.currentTime += 10;
         }
 
         function seekBackward() {
-            videoPlayer.currentTime -= 10;  // Seek backward 10 seconds
+            videoPlayer.currentTime -= 10;
         }
 
         function changeSheet(sheetName) {
