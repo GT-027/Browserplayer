@@ -13,7 +13,7 @@ if not os.path.exists(save_directory):
     os.makedirs(save_directory)
 
 # Function to download a file
-def download_file(url, save_path):
+def download_file(url, save_path, file_name):
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -21,7 +21,7 @@ def download_file(url, save_path):
             file.write(response.content)
         print(f"Downloaded: {url}")
     except requests.exceptions.RequestException as e:
-        print(f"Failed to download {url}: {e}")
+        print(f"Failed to download {file_name}: {e}")
 
 # Iterate through the rows and download the .webm files
 for row in sheet.iter_rows(min_row=2):  # assuming the first row is the header
@@ -37,8 +37,8 @@ for row in sheet.iter_rows(min_row=2):  # assuming the first row is the header
         save_path = os.path.join(save_directory, file_name)
 
         if os.path.exists(save_path):
-            print(f"Already downloaded: {file_name}")
+            print(f"Already downloaded: {url}")
         else:
-            download_file(url, save_path)
+            download_file(url, save_path, file_name)
 
 print("Download completed.")
