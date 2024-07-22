@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory, request, send_file
+from flask import Flask, jsonify, send_from_directory, request
 import openpyxl
 import pandas as pd
 import os
@@ -45,24 +45,44 @@ def extract_names_from_excel(file_path, sheet_name, columns):
     
     return combined_names.tolist(), full_names.tolist()
 
+def extract_lyrics(file_path, full_names):
+    df = pd.read_excel(file_path)
+    
+    # Create a dictionary with combined names as keys and lyrics as values
+    lyrics_dict = {}
+    for i in range(len(df)):
+        combined_name = df.iloc[i]['Anime Name'] + " " + df.iloc[i]['Song Type'] + " - " + df.iloc[i]['Song Info']
+        lyrics = df.iloc[i]['Lyrics']
+        # Treat None or NaN lyrics as empty strings
+        if pd.isna(lyrics):
+            lyrics = ""
+        lyrics_dict[combined_name] = lyrics
+    
+    # Fetch lyrics for each full name, defaulting to empty string if not found
+    lyrics = [lyrics_dict.get(name, "") for name in full_names]
+    
+    return lyrics
+
 @app.route('/playlist')
 def get_playlist():
-    file_path = './AMQDB.xlsx'
+    amqdb_file_path = './AMQDB.xlsx'
+    lyrics_file_path = './Anime_Lyrics.xlsx'
     sheet_name = request.args.get('sheet', 'GaleHail')
     column_name = 'Song Info'  # Column containing the links
 
     try:
-        links = extract_links_from_excel(file_path, sheet_name, column_name)
-        combined_names, full_names = extract_names_from_excel(file_path, sheet_name, ['Anime Name', 'Song Type', 'Song Info'])
+        links = extract_links_from_excel(amqdb_file_path, sheet_name, column_name)
+        combined_names, full_names = extract_names_from_excel(amqdb_file_path, sheet_name, ['Anime Name', 'Song Type', 'Song Info'])
+        lyrics = extract_lyrics(lyrics_file_path, full_names)
         combined_playlist = []
 
-        for link, combined_name, full_name in zip(links, combined_names, full_names):
+        for link, combined_name, full_name, lyric in zip(links, combined_names, full_names, lyrics):
             sanitized_filename = sanitize_filename(full_name) + ".webm"
             local_file_path = os.path.join(WEBM_DIRECTORY, sanitized_filename)
             if os.path.exists(local_file_path):
-                combined_playlist.append((f"/video/{sanitized_filename}", combined_name, full_name, True))
+                combined_playlist.append((f"/video/{sanitized_filename}", combined_name, full_name, True, lyric))
             else:
-                combined_playlist.append((link, combined_name, full_name, False))
+                combined_playlist.append((link, combined_name, full_name, False, lyric))
         
         return jsonify(combined_playlist)
     except ValueError as e:

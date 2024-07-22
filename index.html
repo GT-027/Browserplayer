@@ -136,6 +136,23 @@
             line-height: 20px;
             font-size: 16px;
         }
+        .lyrics-container {
+            width: 300px;
+            padding: 10px;
+            box-sizing: border-box;
+            border-left: 1px solid #ccc;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .lyrics-container h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        #lyricsContent {
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
@@ -168,6 +185,10 @@
                 <button onclick="changeSheet('All')">All</button>
             </div>
         </div>
+        <div class="lyrics-container" id="lyricsContainer">
+            <h2>Lyrics</h2>
+            <div id="lyricsContent"></div>
+        </div>
     </div>
 
     <script>
@@ -176,6 +197,7 @@
         const videoOverlay = document.getElementById('videoOverlay');
         const localIndicator = document.getElementById('localIndicator');
         const filterInput = document.getElementById('filterInput');
+        const lyricsContent = document.getElementById('lyricsContent');
         let playlist = [];
         let filteredPlaylist = [];
         let currentIndex = 0;
@@ -252,6 +274,11 @@
             videoPlayer.load();
             videoPlayer.play();
             highlightCurrentVideo();
+            loadLyrics(filteredPlaylist[index][4]);  // Fetch lyrics and display them
+        }
+
+        function loadLyrics(lyrics) {
+            lyricsContent.textContent = lyrics || 'No lyrics available for this song.';
         }
 
         function nextVideo() {
@@ -295,6 +322,8 @@
             loadPlaylist(currentSheet);
             updateSheetButtons();
         };
+
+
     </script>
 </body>
 </html>
