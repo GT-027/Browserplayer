@@ -183,6 +183,7 @@
                 <button onclick="changeSheet('GTXD')">GTXD</button>
                 <button onclick="changeSheet('Hard')">Hard</button>
                 <button onclick="changeSheet('All')">All</button>
+                <button id="failedButton" onclick="loadFailedPlaylist()">Failed</button> <!-- New button for Failed playlist -->
             </div>
         </div>
         <div class="lyrics-container" id="lyricsContainer">
@@ -203,6 +204,25 @@
         let currentIndex = 0;
         let currentSheet = 'GTXD';
 
+        async function loadFailedPlaylist() {
+            const response = await fetch(`/playlist?failed=true`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert(`Error: ${data.error}`);
+                return;
+            }
+
+            playlist = data;
+            filterPlaylist();
+            if (filteredPlaylist.length > 0) {
+                loadVideo(currentIndex);
+            } else {
+                alert('No videos found in the failed playlist.');
+            }
+            updateSheetButtons("Failed");
+        }
+
         async function loadPlaylist(sheetName) {
             const response = await fetch(`/playlist?sheet=${sheetName}`);
             const data = await response.json();
@@ -219,6 +239,7 @@
             } else {
                 alert('No videos found in the playlist.');
             }
+            updateSheetButtons(sheetName);
         }
 
         function filterPlaylist() {
@@ -302,13 +323,13 @@
         function changeSheet(sheetName) {
             currentSheet = sheetName;
             loadPlaylist(currentSheet);
-            updateSheetButtons();
+            updateSheetButtons(sheetName);
         }
 
-        function updateSheetButtons() {
+        function updateSheetButtons(activeSheet) {
             const buttons = document.querySelectorAll('.sheet-buttons button');
             buttons.forEach(button => {
-                if (button.textContent === currentSheet) {
+                if (button.textContent === activeSheet) {
                     button.classList.add('active-button');
                 } else {
                     button.classList.remove('active-button');
@@ -320,10 +341,8 @@
 
         window.onload = function() {
             loadPlaylist(currentSheet);
-            updateSheetButtons();
+            updateSheetButtons(currentSheet);
         };
-
-
     </script>
 </body>
 </html>

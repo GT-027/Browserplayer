@@ -2,6 +2,7 @@ from flask import Flask, jsonify, send_from_directory, request
 import openpyxl
 import pandas as pd
 import os
+import json
 
 app = Flask(__name__)
 
@@ -68,23 +69,58 @@ def get_playlist():
     amqdb_file_path = './AMQDB.xlsx'
     lyrics_file_path = './Anime_Lyrics.xlsx'
     sheet_name = request.args.get('sheet', 'GaleHail')
+    failed = request.args.get('failed', 'false').lower() == 'true'
     column_name = 'Song Info'  # Column containing the links
 
     try:
-        links = extract_links_from_excel(amqdb_file_path, sheet_name, column_name)
-        combined_names, full_names = extract_names_from_excel(amqdb_file_path, sheet_name, ['Anime Name', 'Song Type', 'Song Info'])
-        lyrics = extract_lyrics(lyrics_file_path, full_names)
-        combined_playlist = []
+        if failed:
+            # Load JSON data from file
+            with open('amq_song_export.json') as f:
+                data = json.load(f)
 
-        for link, combined_name, full_name, lyric in zip(links, combined_names, full_names, lyrics):
-            sanitized_filename = sanitize_filename(full_name) + ".webm"
-            local_file_path = os.path.join(WEBM_DIRECTORY, sanitized_filename)
-            if os.path.exists(local_file_path):
-                combined_playlist.append((f"/video/{sanitized_filename}", combined_name, full_name, True, lyric))
-            else:
-                combined_playlist.append((link, combined_name, full_name, False, lyric))
-        
-        return jsonify(combined_playlist)
+            # Filter songs with correctGuess as False
+            failed_songs = [song for song in data['songs'] if not song['correctGuess']]
+            playlist = []
+            
+            for song in failed_songs:
+                song_info = song['songInfo']
+                anime_name = song_info['animeNames']['romaji']
+                song_name = f"{song_info['songName']} by {song_info['artist']}"
+
+                if song_info['type'] == 1:
+                    song_type = f"Opening {song_info['typeNumber']}"
+                elif song_info['type'] == 2:
+                    song_type = f"Ending {song_info['typeNumber']}"
+                elif song_info['type'] == 3:
+                    song_type = f"Insert {song_info['typeNumber']}"
+                else:
+                    song_type = f"Type {song_info['type']}"
+
+                full_name = f"{anime_name} {song_type} - {song_name}"
+                sanitized_filename = sanitize_filename(full_name) + ".webm"
+                local_file_path = os.path.join(WEBM_DIRECTORY, sanitized_filename)
+                if os.path.exists(local_file_path):
+                    playlist.append((f"/video/{sanitized_filename}", anime_name, full_name, True, ""))
+                else:
+                    playlist.append((song['videoUrl'], anime_name, full_name, False, f"Download as {sanitized_filename}"))
+
+            return jsonify(playlist)
+
+        else:
+            links = extract_links_from_excel(amqdb_file_path, sheet_name, column_name)
+            combined_names, full_names = extract_names_from_excel(amqdb_file_path, sheet_name, ['Anime Name', 'Song Type', 'Song Info'])
+            lyrics = extract_lyrics(lyrics_file_path, full_names)
+            combined_playlist = []
+
+            for link, combined_name, full_name, lyric in zip(links, combined_names, full_names, lyrics):
+                sanitized_filename = sanitize_filename(full_name) + ".webm"
+                local_file_path = os.path.join(WEBM_DIRECTORY, sanitized_filename)
+                if os.path.exists(local_file_path):
+                    combined_playlist.append((f"/video/{sanitized_filename}", combined_name, full_name, True, lyric))
+                else:
+                    combined_playlist.append((link, combined_name, full_name, False, lyric))
+            
+            return jsonify(combined_playlist)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
